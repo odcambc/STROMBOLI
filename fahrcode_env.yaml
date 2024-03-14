@@ -1,0 +1,13 @@
+name: fahrcode
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python
+  - snakemake
+  - samtools
+  - minimap2
+  - cutadapt
+  - starcode
+  - bcftools

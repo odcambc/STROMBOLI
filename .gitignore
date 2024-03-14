@@ -1,0 +1,11 @@
+.DS_Store
+results/
+benchmarks/
+logs/
+stats/
+ref/
+results/
+test/
+.snakemake
+.vscode/
+*.pyc
