@@ -24,7 +24,7 @@ ref_dir: 'references'
 #                  the experiment structure and the mapping to each file.
 #                  This file must contain the following columns:
 #                     sample: Unique sample name
-#                     file: Fastq file name prefix (e.g, without ".fastq.gz").
+#                     file: File name.
 #
 #                   This file is validated against the schema in "schemas/experiments.schema.yaml"
 #
