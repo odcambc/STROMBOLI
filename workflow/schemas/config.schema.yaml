@@ -1,0 +1,40 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: Barcode mapping pipeline configuration file
+properties:
+  data_dir:
+    type: string
+    description: directory containing reads
+  experiment:
+    type: string
+    description: sample condition that will be compared during differential expression analysis (e.g. a treatment, a tissue time, a disease)
+  experiment_file:
+    type: string
+    description: Location of experiment setup definition file in CSV format
+  samples:
+    type: array
+    description: Array of experiment file names (truncated at lane number)
+  ref_dir:
+    type: string
+    description: directory where reference files are located
+  reference:
+    type: string
+    description: reference file name
+  orf:
+    type: string
+    description: "ORF coordinates in reference file. Format: start-stop"
+  samtools_local:
+    type: boolean
+    default: false
+    description: Flag for whether to use local samtools or wrapper version.
+  flanking_sequence:
+    type: string
+    description: Flanking constant nucleotide sequence around barcode
+
+required:
+  - data_dir
+  - experiment
+  - experiment_file
+  - ref_dir
+  - reference
+  - orf
+  - flanking_sequence

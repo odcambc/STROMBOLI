@@ -1,0 +1,13 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: DMS experiment definition CSV file
+properties:
+  sample:
+    type: string
+    description: Sample name 
+  file:
+    type: string
+    description: sample file name prefix (truncated at lane number)
+
+required:
+  - sample
+  - file

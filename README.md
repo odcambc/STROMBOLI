@@ -1,6 +1,6 @@
 # Snakemake pipeline for nanopore-based barcode variant mapping
 
-This is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline for processing barcoded long-read sequencing data. The pipeline is designed to take noisy raw nanopore reads, robustly identify and cluster barcode sequences, then call consensus variants for each barcode cluster.
+This is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline for processing barcoded long-read sequencing data. The pipeline is designed to take noisy  nanopore data, robustly identify and cluster barcode sequences, then call consensus variants for each barcode cluster.
 
 ## Quick start
 
