@@ -11,7 +11,8 @@ include: "rules/barcodes.smk"
 include: "rules/common.smk"
 include: "rules/ref.smk"
 
+
 # Pseudo-rule for running analysis
 rule all:
     input:
-        get_input
+        get_input,
