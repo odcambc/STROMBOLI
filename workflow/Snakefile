@@ -1,0 +1,17 @@
+import os
+from snakemake.utils import validate
+
+
+# Set your specific experimental configuration here
+configfile: "config/test.yaml"
+
+
+# Include rules from other files
+include: "rules/barcodes.smk"
+include: "rules/common.smk"
+include: "rules/ref.smk"
+
+# Pseudo-rule for running analysis
+rule all:
+    input:
+        get_input
