@@ -1,23 +1,25 @@
-# Snakemake pipeline for nanopore-based barcode variant mapping
+# STROMBOLI: Sequencing Through Rapid Optimization of Mutational Barcode Orientation and Linkage Identification
 
-This is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline for processing barcoded long-read sequencing data. The pipeline is designed to take noisy  nanopore data, robustly identify and cluster barcode sequences, then call consensus variants for each barcode cluster.
+**A Snakemake pipeline for nanopore-based barcode variant mapping**
+
+This is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline for processing barcoded long-read sequencing data. The pipeline is designed to take noisy nanopore data, robustly identify and cluster barcode sequences, then call consensus variants for each barcode cluster.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/odcambc/fahrcode
-cd fahrcode
-conda env create --file fahrcode_env.yaml
-conda activate fahrcode
+git clone https://github.com/odcambc/STROMBOLI
+cd STROMBOLI
+conda env create --file stromboli_env.yaml
+conda activate STROMBOLI
 ```
 
 Note: for ARM64 Macs, try the following (assuming [Rosetta](https://support.apple.com/en-us/102527) is installed):
 
 ```bash
-git clone https://github.com/odcambc/fahrcode
-cd fahrcode
-CONDA_SUBDIR=osx-64 conda env create --file fahrcode_env.yaml
-conda activate fahrcode
+git clone https://github.com/odcambc/STROMBOLI
+cd STROMBOLI
+CONDA_SUBDIR=osx-64 conda env create --file stromboli_env.yaml
+conda activate STROMBOLI
 ```
 
 ## Overview
@@ -55,13 +57,13 @@ The pipeline proceeds in the following steps:
 The simplest way to handle dependencies is with [Conda](https://conda.io/docs/) and the provided environment file.
 
 ```bash
-conda env create --file fahrcode_env.yaml
+conda env create --file stromboli_env.yaml
 ```
 
 If using an ARM64 Mac, try the following:
 
 ```bash
-CONDA_SUBDIR=osx-64 conda env create --file fahrcode_env.yaml
+CONDA_SUBDIR=osx-64 conda env create --file stromboli_env.yaml
 ```
 
 #### Manually

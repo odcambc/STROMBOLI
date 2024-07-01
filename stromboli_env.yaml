@@ -1,4 +1,4 @@
-name: fahrcode
+name: STROMBOLI
 channels:
   - conda-forge
   - bioconda
