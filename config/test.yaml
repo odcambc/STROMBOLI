@@ -47,14 +47,9 @@ orf: "198-3237"
 # -----------------------------------------------------------------------------
 # Other parameters:
 #
-#
-# kmers: The kmer length to use for BBMap jobs.
-#
-# sam: The SAM format version to use for BBMap jobs. This should be "1.3" for most cases.
-#
-# mem: Memory to allocate for BBMap jobs with Java (in GB)
-#
-# min_q: Used in GATK: the minimum quality score for bases to be analyzed. 
+# barcode_distance: Used for starcode: Levenshtein (mismatch, insertions, deletions) 
+#                                      distance for clustering. 
 #
 # -----------------------------------------------------------------------------
 
+barcode_distance: 1

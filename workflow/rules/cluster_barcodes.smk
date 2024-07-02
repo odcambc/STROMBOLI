@@ -24,19 +24,22 @@ rule cutadapt:
 rule starcode:
     """Cluster detected barcode sequences using starcode."""
     input:
-        "results/cutadapt/{sample}.barcodes.txt",
+        "results/cutadapt/{sample}.barcodes.matches.tsv",
     output:
-        "results/cutadapt/{sample}.barcodes.clusters.txt",
+        "results/starcode/{sample}.barcodes.clusters.txt",
     params:
         extra="--print-clusters",
+        distance=config["barcode_distance"],
     log:
         "logs/starcode/{sample}.log",
     threads: 16
     shell:
         "starcode -i {input} "
-        "--print-clusters "
+        "{params.extra} "
+        "-d {params.distance} "
         "-t {threads} "
-        "-o {output} 2> {log}"
+        "-o {output} "
+        "2> {log}"
 
 
 rule filter_awk:
@@ -46,6 +49,7 @@ rule filter_awk:
     input:
         "results/cutadapt/{sample}.barcodes.info.tsv",
     output:
-        "results/cutadapt/{sample}.matches.tsv",
+        "results/cutadapt/{sample}.barcodes.matches.tsv",
     shell:
-        "awk '$2 != /-1/ {print $0}' {input} |  awk '$8 ~ /1;2/ {print $1, $5} > {output}"
+        "awk '$2 != /-1/ {{print $0}}' {input} |  "
+        'awk \'$8 ~ /1;2/ {{print ">" + $1 + "\n" + $5}}\' > {output}'
