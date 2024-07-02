@@ -5,16 +5,18 @@ def get_file_from_sample(wildcards):
     filename = experiments.loc[
         experiments["sample"] == wildcards.sample, "file"
     ].squeeze()
-    if filename is None:
+
+    if filename is None or type(filename) is pd.Series and filename.empty:
         raise ValueError(f"Sample {wildcards.sample} not found in experiment file.")
 
-    prefix = config["data_dir"] + "/" + filename
+    full_name = config["data_dir"] + "/" + filename
+    print(full_name)
 
     if filename.endswith(".fastq.gz") or filename.endswith(".fastq"):
         pass
     else:
-        filename = filename + ".fastq.gz"
-    return filename
+        full_name = full_name + ".fastq.gz"
+    return full_name
 
 
 def get_ref(wildcards):

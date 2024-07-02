@@ -5,6 +5,7 @@ channels:
   - nodefaults
 dependencies:
   - python
+  - pandas
   - snakemake
   - samtools
   - minimap2

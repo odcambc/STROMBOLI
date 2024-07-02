@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from snakemake.utils import validate
 
 
@@ -7,8 +8,10 @@ configfile: "config/test.yaml"
 
 
 # Include rules from other files
-include: "rules/barcodes.smk"
 include: "rules/common.smk"
+include: "rules/cluster_barcodes.smk"
+include: "rules/consensus.smk"
+include: "rules/mapping.smk"
 include: "rules/ref.smk"
 
 

@@ -14,7 +14,7 @@ experiment: 'test_data'
 # ref_dir: Directory containing the reference fasta files.
 # -----------------------------------------------------------------------------
 
-data_dir: 'test/data'
+data_dir: 'data'
 ref_dir: 'references'
 
 # -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ ref_dir: 'references'
 # reference: Reference fasta file name. This must be a nucleotide fasta file!
 # -----------------------------------------------------------------------------
 experiment_file: 'config/test.csv'
-reference: test.fasta
+reference: amplicon_ref.fasta
 
 # -----------------------------------------------------------------------------
 # Analysis parameters:
@@ -42,7 +42,7 @@ reference: test.fasta
 #                    In format "GCTGTACGTA...GGTACATTTG" where "..." is the barcode sequence.
 # ----------------------------------------------------------------------------- 
 flanking_sequence: "GCAGTCTGGTGTATGCCTAC...GGTACATTTGAACGCCAAGG"
-orf: "141-1568"
+orf: "198-3237"
 
 # -----------------------------------------------------------------------------
 # Other parameters:
