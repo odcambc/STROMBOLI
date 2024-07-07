@@ -214,6 +214,27 @@ rule write_consensus_variants:
         "scripts/write_consensus_variants.py"
 
 
+# ----- To fix or write -----
+rule create_genbank:
+    """Create a genbank file from a reference fasta."""
+    input:
+        reference_file,
+    output:
+        "references/{reference_name}.gb",
+    script:
+        "scripts/create_genbank.py"
+
+
+rule create_gff3:
+    """Create a gff3 file from a genbank file."""
+    input:
+        "references/{reference_name}.gb",
+    output:
+        "references/{reference_name}.gff",
+    script:
+        "scripts/create_gff3.py"
+
+
 rule match_barcodes:
     """Match barcodes to clustered sequences."""
     input:
@@ -234,29 +255,3 @@ rule write_sequences:
         "results/clusters/{sample}.clusters.csv",
     script:
         "scripts/write_sequences.py"
-
-
-def get_sam_input(wildcards):
-    checkpoint_output = checkpoints.make_cluster_fastas.get(**wildcards).output[0]
-    sample = wildcards.sample
-    barcodes = glob_wildcards(
-        os.path.join(checkpoint_output, "{barcode}.fastq")
-    ).barcode
-    return expand(
-        "results/clusters/{{sample}}/mapped/{barcode}.sam",
-        sample=wildcards.sample,
-        barcode=barcodes,
-    )
-
-
-rule make_list_of_files:
-    """Create a list of files to be processed."""
-    input:
-        get_sam_input,
-    output:
-        "results/{sample}/barcodes_detected.txt",
-    shell:
-        "ls {input} > {output}"
-
-
-# 5220  2024-02-19 20:21  ls | grep \.bcf$ | sed 's/\.bcf//' | xargs -I {} sh -c "bcftools csq -f ../../gp17_orf.fasta -g ../../gp17_orf.gff {}.bcf | bcftools query -f'[%CHROM\t%POS\t%SAMPLE\t%TBCSQ\n]' >> variant.consequences.23.tsv"
