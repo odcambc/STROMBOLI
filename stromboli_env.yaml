@@ -12,3 +12,6 @@ dependencies:
   - cutadapt
   - starcode
   - bcftools
+  - pip
+  - pip:
+    - cyvcf2

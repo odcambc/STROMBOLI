@@ -1,5 +1,6 @@
 import csv
 import sys
+
 csv.field_size_limit(sys.maxsize)
 
 
@@ -17,11 +18,7 @@ names = [
     "q_r",
 ]
 
-clusters_names = [
-    "barcode",
-    "n",
-    "sequences"
-]
+clusters_names = ["barcode", "n", "sequences"]
 
 reads = {}
 
@@ -30,10 +27,8 @@ input_info_file = snakemake.input[0]
 output_barcodes_file = snakemake.output[0]
 
 # Open tsv and parse
-with open(input_info_file, "r", encoding='UTF-8') as f:
-    reader = csv.DictReader(f, delimiter="\t",
-                            fieldnames=names,
-                            quoting=csv.QUOTE_NONE)
+with open(input_info_file, "r", encoding="UTF-8") as f:
+    reader = csv.DictReader(f, delimiter="\t", fieldnames=names, quoting=csv.QUOTE_NONE)
     try:
         for row in reader:
             if row["read"] not in reads.keys():
@@ -46,11 +41,11 @@ with open(input_info_file, "r", encoding='UTF-8') as f:
         print("Error with row: ", row)
 
 
-with open(output_barcodes_file, "w", encoding='UTF-8') as f:
+with open(output_barcodes_file, "w", encoding="UTF-8") as f:
     for read, values in reads.items():
         try:
-            if values['barcode'] != "" and values['seq'] != "":
-                if len(values['barcode']) > min_count:  # Or < min_count??
-                    f.write(values['barcode'] + "\n")
+            if values["barcode"] != "" and values["seq"] != "":
+                if len(values["barcode"]) > min_count:  # Or < min_count??
+                    f.write(values["barcode"] + "\n")
         except TypeError:
             print(read, reads[read])

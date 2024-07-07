@@ -8,14 +8,18 @@ configfile: "config/test.yaml"
 
 
 # Include rules from other files
+# include: "rules/checkpoint.smk"
 include: "rules/common.smk"
-include: "rules/cluster_barcodes.smk"
-include: "rules/consensus.smk"
-include: "rules/mapping.smk"
-include: "rules/ref.smk"
+include: "rules/all.smk"
+
+
+# include: "rules/cluster_barcodes.smk"
+# include: "rules/consensus.smk"
+# include: "rules/mapping.smk"
+# include: "rules/ref.smk"
 
 
 # Pseudo-rule for running analysis
-rule all:
+rule all_2:
     input:
         get_input,

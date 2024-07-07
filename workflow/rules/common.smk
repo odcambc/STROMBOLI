@@ -10,7 +10,6 @@ def get_file_from_sample(wildcards):
         raise ValueError(f"Sample {wildcards.sample} not found in experiment file.")
 
     full_name = config["data_dir"] + "/" + filename
-    print(full_name)
 
     if filename.endswith(".fastq.gz") or filename.endswith(".fastq"):
         pass
@@ -78,3 +77,15 @@ samples = experiments["sample"]
 experiment_samples, experiment_files = get_experiment_samples(experiments, samples)
 files = experiments["file"]
 reference_name = get_ref(config["reference"])
+
+reference_file = os.path.join(os.path.abspath(config["ref_dir"]), config["reference"])
+
+if config["use_qual"]:
+    use_qual = "-q "
+else:
+    use_qual = ""
+
+if config["call_fract"]:
+    call_fract = "-c " + str(config["call_fract"])
+else:
+    call_fract = ""

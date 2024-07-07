@@ -52,4 +52,7 @@ orf: "198-3237"
 #
 # -----------------------------------------------------------------------------
 
-barcode_distance: 1
+barcode_distance: 5
+min_cluster_size: 2
+use_qual: True
+call_fract: 0.75
