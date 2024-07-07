@@ -22,6 +22,13 @@ CONDA_SUBDIR=osx-64 conda env create --file stromboli_env.yaml
 conda activate STROMBOLI
 ```
 
+If the environment installed and activated properly,
+edit the configuration files in the `config` directory as needed. Then run the pipeline with:
+
+```bash
+snakemake -s workflow/Snakefile --software-deployment-method conda --cores 16
+```
+
 ## Overview
 
 The pipeline proceeds in the following steps:
