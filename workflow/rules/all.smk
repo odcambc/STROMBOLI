@@ -134,7 +134,7 @@ rule minimap2_map_consensus_fasta:
     """Map consensus fasta file to reference with minimap2."""
     input:
         consensus="results/consensus/{sample}/{barcode}.fasta",
-        reference="references/gp17_orf.fasta",
+        reference=reference_file,
     output:
         "results/consensus/{sample}/{barcode}_consensus.sam",
     log:
@@ -168,7 +168,7 @@ rule mpileup:
     """Call variants using bcftools mpileup."""
     input:
         bam="results/consensus/{sample}/{barcode}_consensus.bam",
-        reference="references/gp17_orf.fasta",
+        reference=reference_file,
     output:
         "results/consensus/{sample}/{barcode}_consensus.bcf",
     shell:
@@ -182,13 +182,12 @@ rule consequence:
     """
     input:
         bcf="results/consensus/{sample}/{barcode}_consensus.bcf",
-        reference="references/gp17_orf.fasta",
+        reference=reference_file,
+        gff=expand("references/{reference_name}.gff", reference_name=reference_name),
     output:
         "results/consensus/{sample}/{barcode}_csq.bcf",
-    params:
-        gff="references/gp17_orf.gff",
     shell:
-        "bcftools csq -f {input.reference} -g {params.gff} {input.bcf} --verbose 2 > {output}"
+        "bcftools csq -f {input.reference} -g {input.gff} {input.bcf} --verbose 2 > {output}"
 
 
 def get_barcode_names(wildcards):
@@ -210,6 +209,16 @@ rule write_consensus_variants:
         "scripts/write_consensus_variants.py"
 
 
+rule create_gff3:
+    """Create a gff3 file from a genbank file."""
+    input:
+        "references/{reference_name}.gb",
+    output:
+        "references/{reference_name}.gff",
+    shell:
+        "convert_genbank_to_gff3.py -i {input} -o {output}"
+
+
 # ----- To fix or write -----
 rule create_genbank:
     """Create a genbank file from a reference fasta."""
@@ -217,18 +226,10 @@ rule create_genbank:
         reference_file,
     output:
         "references/{reference_name}.gb",
+    params:
+        orf=config["orf"],
     script:
         "scripts/create_genbank.py"
-
-
-rule create_gff3:
-    """Create a gff3 file from a genbank file."""
-    input:
-        "references/{reference_name}.gb",
-    output:
-        "references/{reference_name}.gff",
-    script:
-        "scripts/create_gff3.py"
 
 
 rule match_barcodes:

@@ -141,11 +141,21 @@ with open(output_consensus_file, "w", encoding="UTF-8") as f:
             record_dict["FILTER"] = variant.FILTER
             # Parse info fields
             info = variant.INFO
-            for key in info_keys:
-                field = info.get(key)
-                if key == "BCSQ":
-                    record_dict["BCSQ"] = field
-                    record_dict.update(parse_bcsq(field))
-                else:
-                    record_dict[key] = field
+            if info:
+                for key in info_keys:
+                    field = info.get(key)
+                    if key == "BCSQ":
+                        record_dict["BCSQ"] = field
+                        if field:
+                            record_dict.update(parse_bcsq(field))
+                        else:
+                            record_dict.update({key: None for key in bcsq_keys})
+                            Warning(
+                                f"BCSQ field is empty for {variant.CHROM}:{variant.POS}"
+                            )
+                    else:
+                        record_dict[key] = field
+            else:
+                record_dict.update({key: None for key in info_keys})
+                Warning(f"INFO field is empty for {variant.CHROM}:{variant.POS}")
             consensus_tsv_writer.writerow(record_dict)
