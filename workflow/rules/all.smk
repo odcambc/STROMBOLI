@@ -164,7 +164,6 @@ rule index_bam_consensus:
         "samtools index {input}"
 
 
-# Need to perform for each variant cluster. Shit
 rule mpileup:
     """Call variants using bcftools mpileup."""
     input:
@@ -190,9 +189,6 @@ rule consequence:
         gff="references/gp17_orf.gff",
     shell:
         "bcftools csq -f {input.reference} -g {params.gff} {input.bcf} --verbose 2 > {output}"
-
-
-# bcftools query -f'[%CHROM\t%POS\t%SAMPLE\t%TBCSQ\n]' > {output}
 
 
 def get_barcode_names(wildcards):
