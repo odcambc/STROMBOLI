@@ -86,7 +86,6 @@ bcsq_keys = [
 ]
 
 
-# TODO: fix this?
 def parse_bcsq(info_str):
     bcsq_keys = [
         "consequence",
@@ -109,7 +108,7 @@ def parse_bcsq(info_str):
             # Otherwise there will be 7 values
             if len(values) == 7:
                 value_dict.update(dict(zip(bcsq_keys, values)))
-            if len(values) == 10:
+            elif len(values) == 10:
                 # 3 prime or 5 prime UTR consequences. Skip these.
                 value_dict = {key: None for key in bcsq_keys}
             elif len(values) == 4:
