@@ -11,7 +11,14 @@ def get_file_from_sample(wildcards):
 
     full_name = config["data_dir"] + "/" + filename
 
-    if filename.endswith(".fastq.gz") or filename.endswith(".fastq"):
+    if (
+        filename.endswith(".fastq.gz")
+        or filename.endswith(".fastq")
+        or filename.endswith(".fq")
+        or filename.endswith(".fq.gz")
+        or filename.endswith(".sam")
+        or filename.endswith(".bam")
+    ):
         pass
     else:
         full_name = full_name + ".fastq.gz"

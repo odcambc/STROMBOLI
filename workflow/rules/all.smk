@@ -18,7 +18,7 @@ rule cutadapt:
     shell:
         "cutadapt -j {threads} "
         "{params.extra} {params.adapters} "
-        "-o {output.barcodes_fastq} {input}"
+        "-o {output.barcodes_fastq} {input} 1> {log}"
 
 
 rule write_barcodes:
@@ -44,7 +44,7 @@ rule filter_awk:
     params:
         max_barcode_length=40,
     shell:
-        "awk '($2 !~ /-1/ && $8 ~ /1;2/ && length($5) \< {params.max_barcode_length}) {{print $5}}' {input} > {output}"
+        "awk '($2 !~ /-1/ && $8 ~ /1;2/ && length($5) < {params.max_barcode_length}) {{print $5}}' {input} > {output}"
 
 
 rule starcode:
@@ -88,7 +88,7 @@ rule minimap2_map_clusters:
     output:
         temp("results/clusters/{sample}/mapped/{barcode}.sam"),
     log:
-        "logs/minimap2/{sample}/{barcode}.log",
+        "logs/consensus/{sample}/{barcode}_map.log",
     threads: 16
     shell:
         "minimap2 -ax map-ont {input.reference} {input.clusters} -o {output} 2> {log}"
@@ -100,8 +100,10 @@ rule make_bam:
         "results/clusters/{sample}/mapped/{barcode}.sam",
     output:
         temp("results/clusters/{sample}/mapped/{barcode}.bam"),
+    log:
+        "logging/consensus/{sample}/{barcode}_bam.log",
     shell:
-        "samtools sort {input} > {output}"
+        "samtools sort {input} > {output} 2> {log}"
 
 
 rule index_bam:
@@ -110,8 +112,10 @@ rule index_bam:
         "results/clusters/{sample}/mapped/{barcode}.bam",
     output:
         temp("results/clusters/{sample}/mapped/{barcode}.bam.bai"),
+    log:
+        "logging/consensus/{sample}/{barcode}_bam.log",
     shell:
-        "samtools index {input}"
+        "samtools index {input} 2> {log}"
 
 
 rule consensus:
@@ -151,8 +155,10 @@ rule make_bam_consensus:
         "results/consensus/{sample}/{barcode}_consensus.sam",
     output:
         temp("results/consensus/{sample}/{barcode}_consensus.bam"),
+    log:
+        "logs/minimap2/{sample}/{barcode}_consensus.log",
     shell:
-        "samtools sort {input} > {output}"
+        "samtools sort {input} > {output} 2> {log}"
 
 
 rule index_bam_consensus:
@@ -161,8 +167,10 @@ rule index_bam_consensus:
         "results/consensus/{sample}/{barcode}_consensus.bam",
     output:
         temp("results/consensus/{sample}/{barcode}_consensus.bam.bai"),
+    log:
+        "logs/minimap2/{sample}/{barcode}_consensus_index.log",
     shell:
-        "samtools index {input}"
+        "samtools index {input} 2> {log}"
 
 
 rule mpileup:
@@ -170,10 +178,13 @@ rule mpileup:
     input:
         bam="results/consensus/{sample}/{barcode}_consensus.bam",
         reference=reference_file,
+        indexed="results/consensus/{sample}/{barcode}_consensus.bam.bai",
     output:
         temp("results/consensus/{sample}/{barcode}_consensus.bcf"),
+    log:
+        "logging/consensus/{sample}/{barcode}_mpileup.log",
     shell:
-        "bcftools mpileup -d 5000 -Ou -f {input.reference} {input.bam} | bcftools call -vm -Ob --ploidy 1 -o {output}"
+        "bcftools mpileup -d 5000 -Ou -f {input.reference} {input.bam} | bcftools call -vm -Ob --ploidy 1 -o {output} 2> {log}"
 
 
 rule consequence:
@@ -187,8 +198,10 @@ rule consequence:
         gff=expand("references/{reference_name}.gff", reference_name=reference_name),
     output:
         "results/consensus/{sample}/{barcode}_csq.bcf",
+    log:
+        "logging/consensus/{sample}/{barcode}_csq.log",
     shell:
-        "bcftools csq -f {input.reference} -g {input.gff} {input.bcf} --verbose 2 > {output}"
+        "bcftools csq -f {input.reference} -g {input.gff} {input.bcf} --verbose 2 > {output} 2> {log}"
 
 
 def get_barcode_names(wildcards):
@@ -206,18 +219,23 @@ rule write_consensus_variants:
         get_barcode_names,
     output:
         "results/consensus/{sample}_consensus_variants.tsv",
+    log:
+        "logging/consensus/{sample}_write_consensus.log",
     script:
         "scripts/write_consensus_variants.py"
 
 
+# TODO: remove FASTA field from output GFF
 rule create_gff3:
     """Create a gff3 file from a genbank file."""
     input:
         "references/{reference_name}.gb",
     output:
         "references/{reference_name}.gff",
+    log:
+        "logging/ref/{reference_name}_create_gff3.log",
     shell:
-        "convert_genbank_to_gff3.py -i {input} -o {output}"
+        "convert_genbank_to_gff3.py -i {input} -o {output} 2> {log}"
 
 
 rule create_genbank:
@@ -228,6 +246,8 @@ rule create_genbank:
         "references/{reference_name}.gb",
     params:
         orf=config["orf"],
+    log:
+        "logging/ref/{reference_name}_create_gb.log",
     script:
         "scripts/create_genbank.py"
 
@@ -242,6 +262,8 @@ rule match_barcodes:
         variants="results/consensus/{sample}.consequences.tsv",
     output:
         "results/{sample}.variants.tsv",
+    log:
+        "logging/consensus/{sample}_match_barcodes.log",
     script:
         "scripts/match_barcodes.py"
 
@@ -253,5 +275,7 @@ rule write_sequences:
         barcode_clusters="results/starcode/{sample}.barcodes.clusters.txt",
     output:
         "results/clusters/{sample}.clusters.csv",
+    log:
+        "logs/starcode/{sample}_write_sequences.log",
     script:
         "scripts/write_sequences.py"
