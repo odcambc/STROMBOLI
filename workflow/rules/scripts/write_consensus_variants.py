@@ -86,6 +86,7 @@ bcsq_keys = [
 ]
 
 
+# TODO: fix this?
 def parse_bcsq(info_str):
     bcsq_keys = [
         "consequence",
