@@ -3,7 +3,7 @@ rule cutadapt:
     input:
         get_file_from_sample,
     output:
-        "results/cutadapt/{sample}.barcodes.info.tsv",
+        temp("results/cutadapt/{sample}.barcodes.info.tsv"),
         barcodes_fastq="results/cutadapt/{sample}.barcodes.fastq.gz",
     params:
         adapters=expand(
@@ -41,9 +41,10 @@ rule filter_awk:
         "results/cutadapt/{sample}.barcodes.info.tsv",
     output:
         "results/cutadapt/{sample}.barcodes.matches.txt",
+    params:
+        max_barcode_length=40,
     shell:
-        "awk '$2 !~ /-1/ {{print $0}}' {input} |  "
-        "awk '$8 ~ /1;2/ {{print $5}}' > {output}"
+        "awk '($2 !~ /-1/ && $8 ~ /1;2/ && length($5) \< {params.max_barcode_length}) {{print $5}}' {input} > {output}"
 
 
 rule starcode:
@@ -85,7 +86,7 @@ rule minimap2_map_clusters:
         clusters="results/clusters/barcodes/{sample}/{barcode}.fastq",
         reference=reference_file,
     output:
-        "results/clusters/{sample}/mapped/{barcode}.sam",
+        temp("results/clusters/{sample}/mapped/{barcode}.sam"),
     log:
         "logs/minimap2/{sample}/{barcode}.log",
     threads: 16
@@ -98,7 +99,7 @@ rule make_bam:
     input:
         "results/clusters/{sample}/mapped/{barcode}.sam",
     output:
-        "results/clusters/{sample}/mapped/{barcode}.bam",
+        temp("results/clusters/{sample}/mapped/{barcode}.bam"),
     shell:
         "samtools sort {input} > {output}"
 
@@ -108,7 +109,7 @@ rule index_bam:
     input:
         "results/clusters/{sample}/mapped/{barcode}.bam",
     output:
-        "results/clusters/{sample}/mapped/{barcode}.bam.bai",
+        temp("results/clusters/{sample}/mapped/{barcode}.bam.bai"),
     shell:
         "samtools index {input}"
 
@@ -118,7 +119,7 @@ rule consensus:
     input:
         "results/clusters/{sample}/mapped/{barcode}.bam",
     output:
-        "results/consensus/{sample}/{barcode}.fasta",
+        temp("results/consensus/{sample}/{barcode}.fasta"),
     params:
         use_qual=use_qual,
         call_fract=call_fract,
@@ -136,7 +137,7 @@ rule minimap2_map_consensus_fasta:
         consensus="results/consensus/{sample}/{barcode}.fasta",
         reference=reference_file,
     output:
-        "results/consensus/{sample}/{barcode}_consensus.sam",
+        temp("results/consensus/{sample}/{barcode}_consensus.sam"),
     log:
         "logs/minimap2/{sample}/{barcode}_consensus.log",
     threads: 16
@@ -149,7 +150,7 @@ rule make_bam_consensus:
     input:
         "results/consensus/{sample}/{barcode}_consensus.sam",
     output:
-        "results/consensus/{sample}/{barcode}_consensus.bam",
+        temp("results/consensus/{sample}/{barcode}_consensus.bam"),
     shell:
         "samtools sort {input} > {output}"
 
@@ -159,7 +160,7 @@ rule index_bam_consensus:
     input:
         "results/consensus/{sample}/{barcode}_consensus.bam",
     output:
-        "results/consensus/{sample}/{barcode}_consensus.bam.bai",
+        temp("results/consensus/{sample}/{barcode}_consensus.bam.bai"),
     shell:
         "samtools index {input}"
 
@@ -170,7 +171,7 @@ rule mpileup:
         bam="results/consensus/{sample}/{barcode}_consensus.bam",
         reference=reference_file,
     output:
-        "results/consensus/{sample}/{barcode}_consensus.bcf",
+        temp("results/consensus/{sample}/{barcode}_consensus.bcf"),
     shell:
         "bcftools mpileup -d 5000 -Ou -f {input.reference} {input.bam} | bcftools call -vm -Ob --ploidy 1 -o {output}"
 
@@ -219,7 +220,6 @@ rule create_gff3:
         "convert_genbank_to_gff3.py -i {input} -o {output}"
 
 
-# ----- To fix or write -----
 rule create_genbank:
     """Create a genbank file from a reference fasta."""
     input:
@@ -230,6 +230,9 @@ rule create_genbank:
         orf=config["orf"],
     script:
         "scripts/create_genbank.py"
+
+
+# ----- To fix or write -----
 
 
 rule match_barcodes:
