@@ -24,7 +24,7 @@ rule cutadapt:
 rule starcode:
     """Cluster detected barcode sequences using starcode."""
     input:
-        "results/cutadapt/{sample}.barcodes.matches.tsv",
+        "results/cutadapt/{sample}.barcodes.matches.txt",
     output:
         "results/starcode/{sample}.barcodes.clusters.txt",
     params:
@@ -49,7 +49,67 @@ rule filter_awk:
     input:
         "results/cutadapt/{sample}.barcodes.info.tsv",
     output:
-        "results/cutadapt/{sample}.barcodes.matches.tsv",
+        "results/cutadapt/{sample}.barcodes.matches.txt",
     shell:
-        "awk '$2 != /-1/ {{print $0}}' {input} |  "
-        'awk \'$8 ~ /1;2/ {{print ">" + $1 + "\n" + $5}}\' > {output}'
+        "awk '$2 !~ /-1/ {{print $0}}' {input} |  "
+        "awk '$8 ~ /1;2/ {{print $5}}' > {output}"
+
+
+rule write_sequences:
+    """Match barcodes to clustered sequences."""
+    input:
+        info="results/cutadapt/{sample}.barcodes.info.tsv",
+        barcode_clusters="results/starcode/{sample}.barcodes.clusters.txt",
+    output:
+        "results/clusters/{sample}.clusters.csv",
+    script:
+        "scripts/write_sequences.py"
+
+
+checkpoint make_cluster_fastas:
+    """Generate individual fasta files containing clustered sequences."""
+    input:
+        "results/clusters/{sample}.clusters.csv",
+    output:
+        directory("results/clusters/barcodes/{sample}/"),
+    params:
+        min_size=2,
+    script:
+        "scripts/make_cluster_fastas.py"
+
+
+rule minimap2_cluster_aggregate:
+    """Map clustered sequences to reference using minimap2."""
+    input:
+        clusters="results/clusters/barcodes/{sample}/{barcode}.fastq",
+        reference="references/amplicon_ref.fasta",
+    output:
+        "results/clusters/{sample}/mapped/{barcode}.sam",
+    log:
+        "logs/minimap2/{sample}_{barcode}.log",
+    threads: 16
+    shell:
+        "minimap2 -ax map-ont {input.reference} {input.clusters} -o {output} 2> {log}"
+
+
+def get_sam_input(wildcards):
+    checkpoint_output = checkpoints.make_cluster_fastas.get(**wildcards).output[0]
+    sample = wildcards.sample
+    barcodes = glob_wildcards(
+        os.path.join(checkpoint_output, "{barcode}.fastq")
+    ).barcode
+    return expand(
+        "results/clusters/{{sample}}/mapped/{barcode}.sam",
+        sample=wildcards.sample,
+        barcode=barcodes,
+    )
+
+
+rule make_list_of_files:
+    """Create a list of files to be processed."""
+    input:
+        get_sam_input,
+    output:
+        "results/{sample}/barcodes_detected.txt",
+    shell:
+        "ls {input} > {output}"

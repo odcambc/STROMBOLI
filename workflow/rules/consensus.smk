@@ -1,23 +1,3 @@
-rule consequence:
-    """Annotate variants using bcftools csq."""
-    input:
-        "results/consensus/{barcode}.bcf",
-    output:
-        "results/consensus/{barcode}.consequences.tsv",
-    shell:
-        "bcftools csq -f {reference} -g {gff} {input} | bcftools query -f'[%CHROM\t%POS\t%SAMPLE\t%TBCSQ\n]' > {output}"
-
-
-rule mpileup:
-    """Call variants using bcftools mpileup."""
-    input:
-        "results/mapped/{barcode}.bam",
-    output:
-        "results/consensus/{barcode}.bcf",
-    shell:
-        "bcftools mpileup -d 5000 -Ou -f {reference} {input} | bcftools call -vm -Ob --ploidy 1 -o {output}"
-
-
 rule consensus:
     """Generate consensus sequences from matching barcode sequences using samtools."""
     input:
@@ -31,15 +11,27 @@ rule consensus:
         "samtools consensus -m simple -f fasta {input} > {output} 2> {log}"
 
 
-rule match_barcodes:
-    """Match barcodes to clustered sequences."""
+rule mpileup:
+    """Call variants using bcftools mpileup."""
     input:
-        clusters="results/cutadapt/{sample}.barcodes.clusters.txt",
-        variants="results/consensus/{sample}.variant_consequences.tsv",
+        "results/mapped/{barcode}.bam",
     output:
-        "results/{sample}.variants.tsv",
-    script:
-        "scripts/match_barcodes.py"
+        "results/mapped/{barcode}.bcf",
+    shell:
+        "bcftools mpileup -d 5000 -Ou -f {reference} {input} | bcftools call -vm -Ob --ploidy 1 -o {output}"
+
+
+rule consequence:
+    """Annotate variants using bcftools csq."""
+    input:
+        "results/mapped/{barcode}.bcf",
+    output:
+        "results/consensus/{sample}.barcode_consequences.tsv",
+    shell:
+        "bcftools csq -f {reference} -g {gff} {input} | bcftools query -f'[%CHROM\t%POS\t%SAMPLE\t%TBCSQ\n]' > {output}"
+
+
+# 5220  2024-02-19 20:21  ls | grep \.bcf$ | sed 's/\.bcf//' | xargs -I {} sh -c "bcftools csq -f ../../gp17_orf.fasta -g ../../gp17_orf.gff {}.bcf | bcftools query -f'[%CHROM\t%POS\t%SAMPLE\t%TBCSQ\n]' >> variant.consequences.23.tsv"
 
 
 rule write_barcodes:
@@ -54,24 +46,12 @@ rule write_barcodes:
         "scripts/write_barcodes.py"
 
 
-rule make_cluster_fastas:
-    """Generate individual fasta files containing clustered sequences."""
-    input:
-        "results/cutadapt/{sample}.barcodes.clusters.txt",
-    output:
-        "results/clusters/{sample}.fasta",
-    params:
-        min_size=1000,
-    script:
-        "scripts/make_cluster_fastas.py"
-
-
-rule write_sequences:
+rule match_barcodes:
     """Match barcodes to clustered sequences."""
     input:
-        info="results/cutadapt/{sample}.barcodes.info.tsv",
-        barcode_clusters="results/cutadapt/{sample}.barcodes.clusters.txt",
+        clusters="results/starcode/{sample}.barcodes.clusters.txt",
+        variants="results/consensus/{sample}.consequences.tsv",
     output:
-        "results/clusters/{sample}.clusters.csv",
+        "results/{sample}.variants.tsv",
     script:
-        "scripts/write_sequences.py"
+        "scripts/match_barcodes.py"
