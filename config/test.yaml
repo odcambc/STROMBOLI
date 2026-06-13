@@ -1,0 +1,88 @@
+# Configuration for DMS analysis
+# This file is validated against the schema in "schemas/config.schema.yaml"
+
+# This is the name of the experiment. This is used to name the output files and 
+# results directories, so it must be unique.
+experiment: 'test_data'
+
+# -----------------------------------------------------------------------------
+# Path definitions:
+# These paths are relative to the base snakemake invocation directory,
+# typically the root of the git repository. 
+# data_dir: Directory containing the raw sequencing data. Note: _all_ reads
+#           are expected in this directory, not as subfolders!
+# ref_dir: Directory containing the reference fasta files.
+# -----------------------------------------------------------------------------
+
+data_dir: 'data'
+ref_dir: 'references'
+
+# -----------------------------------------------------------------------------
+# File definitions:
+# These files are relative to the base snakemake invocation directory, as well.
+# experiment_file: CSV file containing the experiment metadata for describing
+#                  the experiment structure and the mapping to each file.
+#                  This file must contain the following columns:
+#                     sample: Unique sample name
+#                     file: File name.
+#
+#                   This file is validated against the schema in "schemas/experiments.schema.yaml"
+#
+# reference: Reference fasta file name. This must be a nucleotide fasta file!
+# -----------------------------------------------------------------------------
+experiment_file: 'config/test.csv'
+reference: amplicon_ref.fasta
+
+# -----------------------------------------------------------------------------
+# Analysis parameters:
+#
+# orf: The coordinate range of the ORF within the reference file.
+#
+# flanking_sequence: Flanking constant nucleotide sequence around barcode.
+#                    In format "GCTGTACGTA...GGTACATTTG" where "..." is the barcode sequence.
+# ----------------------------------------------------------------------------- 
+flanking_sequence: "GCAGTCTGGTGTATGCCTAC...GGTACATTTGAACGCCAAGG"
+orf: "198-3237"
+
+# gene_name: locus name for the generated GenBank/GFF (bcftools csq annotation).
+# Library-specific; defaults to the reference name if unset.
+gene_name: gp17
+
+# -----------------------------------------------------------------------------
+# Other parameters:
+#
+# barcode_distance: Used for starcode: Levenshtein (mismatch, insertions, deletions) 
+#                                      distance for clustering. 
+#
+# -----------------------------------------------------------------------------
+
+barcode_distance: 5
+min_cluster_size: 2
+use_qual: True
+call_fract: 0.75
+
+# max_barcode_length: reads whose detected barcode is at least this long are
+#                     discarded as spurious (the designed barcode is 20 bp).
+# mpileup_max_depth:  maximum per-file read depth for bcftools mpileup (-d).
+max_barcode_length: 40
+mpileup_max_depth: 5000
+
+# Variant-calling strategy (see workflow/rules/all.smk and tools/fdr_estimator.py):
+#   double    - consensus then re-map; depth-1 call, conservative default.
+#   single_qc - call on the cluster pileup, filter by ALT allele fraction
+#               (qc_min_af / qc_min_alt_reads). Pair with a larger min_cluster_size.
+calling_mode: double
+qc_min_af: 0.85
+qc_min_alt_reads: 2
+
+# Barcode clash detection: flag and exclude ambiguous barcode->variant assignments.
+# clash_merge_fraction: a starcode cluster is "merged" if its 2nd-most-abundant member
+#                       barcode holds >= this fraction of reads (two real barcodes, not
+#                       an error cloud).
+# clash_mixed_af:       single_qc variants with clash_mixed_af <= AF < qc_min_af mark a
+#                       barcode "mixed" (likely a barcode collision).
+# exclude_clashes:      drop flagged barcodes from results/{sample}.variants.tsv (they
+#                       are always recorded in results/{sample}.flagged.tsv).
+clash_merge_fraction: 0.2
+clash_mixed_af: 0.2
+exclude_clashes: True

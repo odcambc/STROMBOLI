@@ -1,0 +1,102 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: Barcode mapping pipeline configuration file
+properties:
+  data_dir:
+    type: string
+    description: directory containing reads
+  experiment:
+    type: string
+    description: sample condition that will be compared during differential expression analysis (e.g. a treatment, a tissue time, a disease)
+  experiment_file:
+    type: string
+    description: Location of experiment setup definition file in CSV format
+  ref_dir:
+    type: string
+    description: directory where reference files are located
+  reference:
+    type: string
+    description: reference file name
+  orf:
+    type: string
+    description: "ORF coordinates in reference file. Format: start-stop"
+  flanking_sequence:
+    type: string
+    description: Flanking constant nucleotide sequence around barcode
+  gene_name:
+    type: string
+    description: >
+      Gene/locus name used when generating a GenBank/GFF from the reference (for
+      bcftools csq annotation). Library-specific; defaults to the reference name if
+      unset.
+  barcode_distance:
+    type: integer
+    description: starcode Levenshtein distance for clustering barcodes
+  max_barcode_length:
+    type: integer
+    default: 40
+    description: Reads whose detected barcode is at least this long are discarded as spurious
+  min_cluster_size:
+    type: integer
+    default: 2
+    description: Minimum number of reads in a barcode cluster to call a consensus
+  use_qual:
+    type: boolean
+    default: true
+    description: Whether to weight consensus calling by base quality (samtools consensus -q)
+  call_fract:
+    type: number
+    default: 0.75
+    description: Minimum fraction of reads that must agree to call a consensus base (samtools consensus -c). Set to 0/false to omit the flag.
+  mpileup_max_depth:
+    type: integer
+    default: 5000
+    description: Maximum per-file read depth for bcftools mpileup (-d)
+  calling_mode:
+    type: string
+    enum: [double, single_qc]
+    default: double
+    description: >
+      Per-cluster variant-calling strategy. "double" builds a consensus and
+      re-maps it (depth-1, max precision, depth-agnostic). "single_qc" calls
+      directly on the cluster pileup and filters by ALT allele fraction (keeps
+      read depth; pair with a min_cluster_size depth floor).
+  qc_min_af:
+    type: number
+    default: 0.85
+    description: "single_qc: minimum ALT allele fraction to keep a call"
+  qc_min_alt_reads:
+    type: integer
+    default: 2
+    description: "single_qc: minimum number of ALT-supporting reads to keep a call"
+  clash_merge_fraction:
+    type: number
+    default: 0.2
+    description: >
+      Flag a starcode cluster as a merge of distinct barcodes (not an error cloud)
+      if its 2nd-most-abundant member barcode holds at least this fraction of the
+      cluster's reads.
+  clash_mixed_af:
+    type: number
+    default: 0.2
+    description: >
+      single_qc: variants with clash_mixed_af <= AF < qc_min_af mark a barcode as a
+      mixture (a likely barcode collision). Also the caller's lower AF bound.
+  exclude_clashes:
+    type: boolean
+    default: true
+    description: >
+      Drop flagged (merged or mixed) barcodes from the final mapping. They are always
+      written, with the reason, to results/{sample}.flagged.tsv regardless.
+
+required:
+  - data_dir
+  - experiment
+  - experiment_file
+  - ref_dir
+  - reference
+  - orf
+  - flanking_sequence
+  - barcode_distance
+  - max_barcode_length
+  - min_cluster_size
+  - mpileup_max_depth

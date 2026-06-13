@@ -1,0 +1,31 @@
+# Configuration for the synthetic ground-truth test dataset.
+# Generate the data first with:  python tests/generate_synthetic_data.py
+# Then run:  snakemake -s workflow/Snakefile --configfile config/synthetic.yaml \
+#                       --software-deployment-method conda --cores 4
+
+experiment: 'synthetic_data'
+
+data_dir: 'data'
+ref_dir: 'references'
+
+experiment_file: 'config/synthetic.csv'
+reference: amplicon_ref.fasta
+
+flanking_sequence: "GCAGTCTGGTGTATGCCTAC...GGTACATTTGAACGCCAAGG"
+orf: "199-3237"
+gene_name: gp17
+
+barcode_distance: 5
+min_cluster_size: 2
+use_qual: True
+call_fract: 0.75
+max_barcode_length: 40
+mpileup_max_depth: 5000
+
+calling_mode: double
+qc_min_af: 0.85
+qc_min_alt_reads: 2
+
+clash_merge_fraction: 0.2
+clash_mixed_af: 0.2
+exclude_clashes: True

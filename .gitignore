@@ -1,0 +1,23 @@
+# Pipeline outputs and run artifacts
+results/
+logs/
+logging/
+benchmarks/
+.snakemake/
+
+# Generated test data
+data/synthetic.fastq.gz
+tests/synthetic_truth.csv
+
+# Generated experiment artifacts (scripts are tracked; their output is not)
+experiments/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# macOS
+.DS_Store

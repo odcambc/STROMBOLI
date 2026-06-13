@@ -1,0 +1,24 @@
+import os
+import pandas as pd
+from snakemake.utils import validate
+
+
+# Set your specific experimental configuration here
+configfile: "config/test.yaml"
+
+
+# common.smk defines helper functions, loads the experiment table, and sets the
+# module-level variables (samples, reference_file, ...) used by the rules and by
+# the `all` target below. It must be included before `rule all`.
+include: "rules/common.smk"
+
+
+# Default target. Snakemake uses the first rule defined as the default target, so
+# this must appear before the processing rules are included.
+rule all:
+    input:
+        get_input,
+
+
+# Processing rules (barcode detection -> clustering -> consensus -> variants).
+include: "rules/all.smk"
