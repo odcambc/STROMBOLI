@@ -17,8 +17,16 @@ dependencies:
   - starcode >=1.4
   - tqdm >=4.66
   - pytest >=8.0
+  # QC: NanoPlot for raw/post-cutadapt long-read QC; MultiQC aggregates every
+  # per-sample QC artifact (NanoStat + cutadapt + the stromboli plugin) into one report.
+  - nanoplot >=1.42
+  - multiqc >=1.20
   - pip
   - pip:
     - cyvcf2>=0.30
     - biopython>=1.83
     - biocode>=0.11
+    # multiqc-stromboli: pipeline-specific MultiQC plugin. Installed editable from the
+    # local dev repo for now; switch to the pinned pypi release once published:
+    #   - multiqc-stromboli>=0.1
+    - --editable /Users/bartleby/Projects/stromboli-multiqc

@@ -234,10 +234,88 @@ rule qc_summary:
         "results/qc/{sample}.stromboli_qc.json",
     params:
         min_cluster_size=config["min_cluster_size"],
+        orf=config["orf"],
     log:
         "logs/qc/{sample}_qc_summary.log",
     script:
         "scripts/write_qc_summary.py"
+
+
+# ----- Raw-data QC + MultiQC aggregation -----
+# NanoPlot is run twice per sample: on the raw input reads (library/instrument health)
+# and on cutadapt's extracted barcode reads (extraction yield/quality). The raw-vs-
+# trimmed read-count delta is the barcode-detection rate (cutadapt runs
+# --discard-untrimmed). Both emit a NanoStats.txt parsed by MultiQC's NanoStat module.
+
+
+# NanoPlot writes a fixed "NanoStats.txt" and leaves the "General summary:" dataset label
+# blank, so MultiQC's NanoStat module names every report after the filename stem — all four
+# collapse to one "NanoStats" sample. We give each file a unique --prefix AND inject the
+# sample label into the "General summary:" line, which the legacy parser uses verbatim as
+# the sample name (bypassing MultiQC's filename cleaning, which would otherwise strip the
+# ".trimmed" tail but keep ".raw", desyncing the two). Labels: {sample}.raw / {sample}.trimmed.
+
+
+rule nanoplot_raw:
+    """Raw-read QC with NanoPlot, before barcode extraction."""
+    input:
+        get_file_from_sample,
+    output:
+        "results/qc/nanoplot/raw/{sample}/{sample}.raw.NanoStats.txt",
+    params:
+        informat=nanoplot_informat,
+        outdir="results/qc/nanoplot/raw/{sample}",
+        prefix="{sample}.raw.",
+        label="{sample}.raw",
+    log:
+        "logs/qc/nanoplot/{sample}_raw.log",
+    threads: 4
+    shell:
+        "NanoPlot -t {threads} {params.informat} {input} "
+        "--outdir {params.outdir} --prefix {params.prefix} 2> {log}; "
+        "sed -E 's|^General summary:.*|General summary: {params.label}|' {output} "
+        "> {output}.tmp && mv {output}.tmp {output}"
+
+
+rule nanoplot_trimmed:
+    """QC of cutadapt's extracted barcode reads (what enters clustering)."""
+    input:
+        "results/cutadapt/{sample}.barcodes.fastq.gz",
+    output:
+        "results/qc/nanoplot/trimmed/{sample}/{sample}.trimmed.NanoStats.txt",
+    params:
+        outdir="results/qc/nanoplot/trimmed/{sample}",
+        prefix="{sample}.trimmed.",
+        label="{sample}.trimmed",
+    log:
+        "logs/qc/nanoplot/{sample}_trimmed.log",
+    threads: 4
+    shell:
+        "NanoPlot -t {threads} --fastq {input} "
+        "--outdir {params.outdir} --prefix {params.prefix} 2> {log}; "
+        "sed -E 's|^General summary:.*|General summary: {params.label}|' {output} "
+        "> {output}.tmp && mv {output}.tmp {output}"
+
+
+rule multiqc:
+    """Aggregate every per-sample QC artifact into one report: NanoStat (raw + trimmed),
+    cutadapt (built-in module), and the pipeline-specific multiqc-stromboli plugin reading
+    the stromboli_qc.json summaries. get_multiqc_inputs makes the dependency explicit; the
+    search paths below are where MultiQC scans for the matching files."""
+    input:
+        get_multiqc_inputs,
+    output:
+        "results/multiqc/multiqc_report.html",
+    params:
+        outdir="results/multiqc",
+        config="config/multiqc_config.yaml",
+    log:
+        "logs/qc/multiqc.log",
+    shell:
+        # Pass the declared inputs explicitly (not a directory scan) so the report is
+        # scoped to this run's artifacts and can't pick up stale files from another config.
+        "multiqc --force -c {params.config} --outdir {params.outdir} "
+        "--filename multiqc_report.html {input} 2> {log}"
 
 
 # ----- Reference preparation -----

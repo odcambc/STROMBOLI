@@ -148,25 +148,63 @@ def test_build_qc_summary(tmp_path):
         {"barcode": "C", "n_reads": "12", "n_members": "1", "second_member_fraction": "0.0"},
     ])
     cvars = tmp_path / "cv.tsv"
-    _write_tsv(cvars, ["barcode", "POS", "af"], [
-        {"barcode": "B", "POS": "100", "af": "0.95"},
-        {"barcode": "C", "POS": "200", "af": "0.5"},
-    ])
+    _write_tsv(
+        cvars,
+        ["barcode", "POS", "REF", "ALT", "consequence", "INDEL",
+         "amino_acid_change", "dna_change", "af"],
+        [
+            {"barcode": "B", "POS": "100", "REF": "C", "ALT": "A", "consequence": "missense",
+             "INDEL": "", "amino_acid_change": "10P>10L", "dna_change": "100C>A", "af": "0.95"},
+            {"barcode": "B", "POS": "150", "REF": "G", "ALT": "A", "consequence": "*synonymous",
+             "INDEL": "", "amino_acid_change": "20K", "dna_change": "150G>A+151T>C", "af": "0.9"},
+            {"barcode": "C", "POS": "200", "REF": "A", "ALT": "AT", "consequence": "",
+             "INDEL": "1", "amino_acid_change": "", "dna_change": "200A>AT", "af": "0.5"},
+        ],
+    )
     variants = tmp_path / "v.tsv"
-    _write_tsv(variants, ["all_barcodes", "barcode", "POS"],
-               [{"all_barcodes": "B", "barcode": "B", "POS": "100"}])
+    _write_tsv(variants, ["all_barcodes", "barcode", "POS", "REF", "ALT", "dna_change"], [
+        {"all_barcodes": "B", "barcode": "B", "POS": "100", "REF": "C", "ALT": "A",
+         "dna_change": "100C>A"},
+        {"all_barcodes": "C", "barcode": "C", "POS": "100", "REF": "C", "ALT": "A",
+         "dna_change": "100C>A"},  # same variant carried by a 2nd barcode
+    ])
     flagged = tmp_path / "f.tsv"
-    _write_tsv(flagged, ["barcode", "reason"], [{"barcode": "C", "reason": "mixed"}])
+    _write_tsv(
+        flagged,
+        ["barcode", "reason", "second_member_fraction", "n_confident", "n_ambiguous"],
+        [{"barcode": "C", "reason": "mixed", "second_member_fraction": "0.5",
+          "n_confident": "3", "n_ambiguous": "2"}],
+    )
 
     s = wqs.build_qc_summary("samp", str(cutadapt), str(cluster_qc), str(cvars),
-                             str(variants), str(flagged), min_cluster_size=2)
-    assert s["schema_version"] == 1 and s["sample"] == "samp"
+                             str(variants), str(flagged), min_cluster_size=2, orf="1-300")
+    assert s["schema_version"] == 4 and s["sample"] == "samp"
     assert s["reads_total"] == 1000 and s["reads_with_barcode"] == 800
     assert s["n_clusters"] == 3 and s["n_clusters_passing"] == 2  # sizes 4,12 >= 2
-    assert s["n_variants"] == 1 and s["n_flagged_mixed"] == 1 and s["n_flagged_merged"] == 0
-    assert s["cluster_size_histogram"]["1"] == 1
-    assert s["allele_fraction_histogram"]["0.85-1.0"] == 1
+    assert s["n_flagged_mixed"] == 1 and s["n_flagged_merged"] == 0
+    assert s["cluster_size_counts"] == {"1": 1, "4": 1, "12": 1}
+    assert s["allele_fraction_histogram"]["0.85-1.0"] == 2
     assert s["allele_fraction_histogram"]["0.4-0.6"] == 1
+    # v3 latent-data metrics
+    assert s["n_positions_mutated"] == 3  # POS 100, 150, 200
+    assert s["n_indels"] == 1
+    # '*synonymous' normalizes to 'synonymous'; blank consequence -> 'noncoding'
+    assert s["variant_consequences"] == {"missense": 1, "synonymous": 1, "noncoding": 1}
+    assert s["variants_per_barcode_counts"] == {"1": 1, "2": 1}  # C:1 variant, B:2 variants
+    assert s["cluster_purity_histogram"]["0"] == 3 and s["n_impure_clusters"] == 0
+    assert s["n_flagged_confident"] == 3 and s["n_flagged_ambiguous"] == 2
+    # v4 coverage/complexity/redundancy/composition
+    # variant types: 100C>A snv, 150G>A+151T>C mnv, A->AT insertion
+    assert s["variant_types"] == {"snv": 1, "mnv": 1, "insertion": 1}
+    # codon positions parsed from amino_acid_change: 10 and 20 (blank -> none)
+    assert s["orf_codons"] == 99 and s["n_codons_covered"] == 2  # (300-1)//3 = 99
+    assert s["frac_orf_covered"] == round(2 / 99, 4)
+    assert 0.0 < s["coverage_gini"] <= 1.0  # sparse coverage -> uneven
+    # both final-mapping rows are the same variant (100C>A) carried by 2 barcodes
+    assert s["n_variants"] == 2 and s["n_distinct_variants"] == 1
+    assert s["barcodes_per_variant_counts"] == {"2": 1}
+    # barcode composition over cluster_qc barcodes "A", "B", "C" (length 1 each)
+    assert s["barcode_length_counts"] == {"1": 3}
 
 
 # --- synthetic data generator ---------------------------------------------------

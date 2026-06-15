@@ -1,0 +1,9 @@
+# MultiQC configuration for the STROMBOLI pipeline.
+# Applied via `multiqc -c config/multiqc_config.yaml` in the `multiqc` rule.
+
+# NanoStat sample names ("<sample>.raw" / "<sample>.trimmed") are set by the nanoplot
+# rules injecting the label into each NanoStats.txt "General summary:" line, so no
+# filename cleaning is configured here.
+
+report_header_info:
+  - Pipeline: "STROMBOLI (barcode -> ORF variant mapping, nanopore DMS)"

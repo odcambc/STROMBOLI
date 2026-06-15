@@ -32,11 +32,38 @@ def get_ref(wildcards):
 
 
 def get_input(wildcards):
-    """Final targets for `rule all`: per-sample barcode->variant table and QC summary."""
+    """Final target for `rule all`: the aggregated MultiQC report. It transitively
+    requires every per-sample variant table and QC artifact (the report's inputs pull in
+    `stromboli_qc.json`, which depends on the full calling chain), so this single target
+    drives the whole pipeline."""
+    return "results/multiqc/multiqc_report.html"
+
+
+def nanoplot_informat(wildcards):
+    """Pick NanoPlot's input flag from the raw file's extension. Reads are normally
+    FASTQ; the experiment table also permits aligned BAM/SAM (see get_file_from_sample)."""
+    raw = get_file_from_sample(wildcards)
+    if raw.endswith((".bam", ".sam")):
+        return "--bam"
+    return "--fastq"
+
+
+def get_multiqc_inputs(wildcards):
+    """Every per-sample artifact the MultiQC report depends on: the two NanoStat reports
+    (raw + post-cutadapt), the cutadapt JSON, and the stromboli plugin's summary JSON."""
     samples_list = list(samples)
-    return expand(
-        "results/{sample}.variants.tsv", sample=samples_list
-    ) + expand("results/qc/{sample}.stromboli_qc.json", sample=samples_list)
+    return (
+        expand(
+            "results/qc/nanoplot/raw/{sample}/{sample}.raw.NanoStats.txt",
+            sample=samples_list,
+        )
+        + expand(
+            "results/qc/nanoplot/trimmed/{sample}/{sample}.trimmed.NanoStats.txt",
+            sample=samples_list,
+        )
+        + expand("results/cutadapt/{sample}.cutadapt.json", sample=samples_list)
+        + expand("results/qc/{sample}.stromboli_qc.json", sample=samples_list)
+    )
 
 
 # Validate config and experiment files

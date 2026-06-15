@@ -49,16 +49,45 @@ The pipeline proceeds in the following steps:
 - [ ] Add documentation (usage, installation, etc.) — in progress
 - [x] Detect and flag barcode clashes — merged clusters (distinct barcodes pooled by starcode) and mixed barcodes (collisions, seen as intermediate-AF variants in `single_qc`) are flagged and excluded from the mapping, and recorded with the reason in `results/{sample}.flagged.tsv`. Thresholds: `clash_merge_fraction`, `clash_mixed_af`, `exclude_clashes`.
   - [ ] Robustly detect *balanced* (~50/50) collisions — the haploid caller resolves these to reference, so they produce no variant to flag; this folds into the per-position purity scan of the WT-calling item below.
-- [ ] QC and visualization output (build the metrics first; the plugin consumes them):
+- [ ] QC and visualization output — three layers merged into one MultiQC report
+  (raw-data quality + standard tool outputs + pipeline-specific metrics):
   - [x] Emit a per-sample QC summary JSON (`results/qc/{sample}.stromboli_qc.json`,
     `schema_version` 1) aggregating the metrics the pipeline already produces —
     `cluster_qc.tsv`, `flagged.tsv`, the per-barcode `af` column, cutadapt read counts.
     Useful on its own to eyeball a run.
-  - [ ] MultiQC plugin `multiqc-stromboli` (separate pip-installable repo) consuming that
-    summary — **stubbed** (general-stats table + clash bar plot wired and verified
-    end-to-end against real output); remaining: the cluster-size and allele-fraction
-    distribution plots. cutadapt's `*.cutadapt.json` is already covered by MultiQC's
-    built-in module.
+  - [x] **Raw-data QC with NanoPlot** (the long-read standard; FastQC's per-cycle model
+    doesn't transfer to ONT's kb-scale, heavy-tailed read-length and per-read quality
+    distributions). Two runs per sample: the raw input reads (library/instrument health)
+    and the post-cutadapt barcode FASTQ (extraction yield/quality) — the delta between
+    them is the barcode-detection rate (cutadapt runs `--discard-untrimmed`). NanoPlot
+    emits its own `NanoStats.txt`, parsed by MultiQC's built-in NanoStat module (no
+    separate NanoStat call). Outputs under `results/qc/nanoplot/{raw,trimmed}/{sample}/`.
+    Note: each report's sample name is injected into the `NanoStats.txt` `General summary:`
+    line (NanoPlot leaves it blank) so the two stages stay distinct in MultiQC — its
+    default filename cleaning strips a `.trimmed` tail but keeps `.raw`, which would
+    otherwise desync them.
+  - [x] **Top-level `multiqc` aggregation rule** — one all-samples target that depends on
+    every per-sample QC artifact and renders `results/multiqc/multiqc_report.html`.
+    Inputs: the two NanoStat reports, `*.cutadapt.json` (built-in module), and the
+    `*.stromboli_qc.json` summaries (via the plugin below). `rule all` / `get_input` (in
+    `workflow/rules/common.smk`) now targets this report. MultiQC is passed the declared
+    inputs explicitly (not a directory scan) so the report is scoped to the run and can't
+    pick up stale artifacts from another config; settings in `config/multiqc_config.yaml`.
+  - [x] MultiQC plugin `multiqc-stromboli` (separate pip-installable repo) consuming the
+    summary JSON (schema_version 4) — general-stats table, clash bar plot, and plots for
+    variant-consequence (DMS class breakdown), **variant types** (SNV/MNV/indel), **ORF
+    coverage profile + evenness** (Gini, %-covered), cluster size, allele fraction,
+    variants-per-barcode, **barcodes-per-variant** (mapping redundancy), cluster purity,
+    and **barcode composition** (length, GC), all verified end-to-end against real output.
+    Every metric is derived from data already in the per-barcode tables — coverage from
+    `amino_acid_change` codon positions (ORF length via the `orf` config param), variant
+    type from `INDEL`/`dna_change`, redundancy from `variants.tsv` — with no extra
+    pipeline rules.
+  - Deliberately **not** emitting `samtools stats` / `bcftools stats`: the per-barcode
+    scatter produces thousands-plus of tiny transient BAMs/BCFs, with no single
+    alignment/variant artifact to summarize. Mapping and coverage QC stay in the
+    per-cluster metrics (`cluster_qc.tsv`) instead.
+  - Env: add `nanoplot` and `multiqc` to `stromboli_env.yaml` (both on bioconda).
 - [ ] Pre-run parameter tuning/QC: run the cheap front of the pipeline (cutadapt →
   starcode → clustering) on a *subsample* and print a few numbers — barcode detection
   rate, cluster count, cluster-size distribution vs candidate `min_cluster_size`, and
