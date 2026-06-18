@@ -271,7 +271,7 @@ rule nanoplot_raw:
         "logs/qc/nanoplot/{sample}_raw.log",
     threads: 4
     shell:
-        "NanoPlot -t {threads} {params.informat} {input} "
+        "NanoPlot -t {threads} {params.informat} {input} --no_static "
         "--outdir {params.outdir} --prefix {params.prefix} 2> {log}; "
         "sed -E 's|^General summary:.*|General summary: {params.label}|' {output} "
         "> {output}.tmp && mv {output}.tmp {output}"
@@ -291,7 +291,7 @@ rule nanoplot_trimmed:
         "logs/qc/nanoplot/{sample}_trimmed.log",
     threads: 4
     shell:
-        "NanoPlot -t {threads} --fastq {input} "
+        "NanoPlot -t {threads} --fastq {input} --no_static "
         "--outdir {params.outdir} --prefix {params.prefix} 2> {log}; "
         "sed -E 's|^General summary:.*|General summary: {params.label}|' {output} "
         "> {output}.tmp && mv {output}.tmp {output}"

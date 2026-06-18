@@ -33,6 +33,17 @@ def load_second_fraction(qc_path):
     return frac
 
 
+def load_cluster_depth(qc_path):
+    """Map canonical barcode -> cluster read depth (n_reads). This is the number of
+    reads backing each variant call; downstream filtering to a target FDR keys on it,
+    since per-barcode calls below ~10 reads are noise-dominated regardless of mode."""
+    depth = {}
+    with open(qc_path, "r", encoding="UTF-8") as f:
+        for row in csv.DictReader(f, delimiter="\t"):
+            depth[row["barcode"]] = int(row["n_reads"])
+    return depth
+
+
 def _af(row):
     """Parse the ALT allele fraction; None when absent (double mode)."""
     v = row.get("af", "")
@@ -65,6 +76,7 @@ def classify_and_join(
     """
     clusters = load_clusters(clusters_path)
     second_frac = load_second_fraction(qc_path)
+    cluster_depth = load_cluster_depth(qc_path)
 
     rows_by_bc = defaultdict(list)
     with open(variants_path, "r", encoding="UTF-8") as f:
@@ -73,7 +85,7 @@ def classify_and_join(
         for row in reader:
             rows_by_bc[row["barcode"]].append(row)
 
-    main_fields = ["all_barcodes"] + var_fields
+    main_fields = ["all_barcodes", "cluster_depth"] + var_fields
     flagged_fields = ["barcode", "reason", "second_member_fraction",
                       "n_confident", "n_ambiguous"]
     n_kept = n_flagged = 0
@@ -108,8 +120,10 @@ def classify_and_join(
                     continue
 
             members = clusters.get(barcode, [barcode])
+            depth = cluster_depth.get(barcode, "")
             for r in confident:
-                main.writerow({"all_barcodes": ",".join(members), **r})
+                main.writerow(
+                    {"all_barcodes": ",".join(members), "cluster_depth": depth, **r})
             n_kept += 1
 
         # Also record merged clusters that produced no variant rows.
