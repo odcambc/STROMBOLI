@@ -52,7 +52,7 @@ The pipeline proceeds in the following steps:
 - [ ] QC and visualization output — three layers merged into one MultiQC report
   (raw-data quality + standard tool outputs + pipeline-specific metrics):
   - [x] Emit a per-sample QC summary JSON (`results/qc/{sample}.stromboli_qc.json`,
-    `schema_version` 1) aggregating the metrics the pipeline already produces —
+    `schema_version` 4) aggregating the metrics the pipeline already produces —
     `cluster_qc.tsv`, `flagged.tsv`, the per-barcode `af` column, cutadapt read counts.
     Useful on its own to eyeball a run.
   - [x] **Raw-data QC with NanoPlot** (the long-read standard; FastQC's per-cycle model
@@ -93,18 +93,20 @@ The pipeline proceeds in the following steps:
   rate, cluster count, cluster-size distribution vs candidate `min_cluster_size`, and
   the FDR estimate at candidate depth/AF thresholds — to sanity-check parameters before
   the full run. A small script, not a parameter-space-exploration engine.
-- [ ] *(Separate project — likely its own web app)* Library & sequencing-run **design planner** — plan barcode length vs variant/insert size, plan sequencing depth for variant mapping, and set FDR / cluster-size / AF thresholds from design parameters. Builds on the [`tools/fdr_estimator.py`](tools/fdr_estimator.py) math, turning after-the-fact analysis into an up-front design tool.
-- [ ] Ship a recommended `single_qc` + `min_cluster_size` ≈ 15 "high-recall" config profile
+- [ ] *(Separate project — likely its own module/web app)* Library & sequencing-run **design planner** — plan barcode length vs variant/insert size, plan sequencing depth for variant mapping, and set FDR / cluster-size / AF thresholds from design parameters. The core statistical model is prototyped — read-capture + barcode-collision and length requirements across random vs error-correcting barcode sets, validated against a real run (a ~5% ONT error rate needs ~25–31 bp; HiFi ~13–15 bp), building on the [`tools/fdr_estimator.py`](tools/fdr_estimator.py) math. Remaining: package the analysis as a standalone module and add the planner front-end.
+- [ ] Ship a recommended `single_qc` "high-recall" config profile — **revised** by analysis on a real shallow library: `single_qc` floods *systematic* homopolymer indels that depth does **not** remove (it must be paired with indel filtering), and its SNV-recall edge only appears at high depth — the two modes converge by depth ≈20. The substantive lever is a per-barcode **depth floor**, not the mode; the new `cluster_depth` column lets a run be filtered to a target FDR without discarding barcodes. A profile should bundle indel-dropping + a depth floor rather than just `min_cluster_size` ≈ 15.
 - [ ] Extend [`tools/fdr_estimator.py`](tools/fdr_estimator.py) to model a *distribution* of systematic (homopolymer) error fractions rather than a single `f_sys` (real hotspots span ~0.3–0.8)
 - [ ] *(Deferred)* Vectorized multi-sample calling for very large libraries. Tag reads with `RG`=barcode, map once, and run a single multi-sample `mpileup`/`call`/`csq` (each barcode a sample column) instead of the per-barcode scatter. The prototype ([`experiments/prototype_multisample.py`](experiments/prototype_multisample.py)) measured **~7× faster than the fused per-barcode pipeline, single-threaded, ~190× fewer process spawns**, and recovered the synthetic truth exactly. **Not adopted** because it collapses the per-barcode evidence trail that keeps errors inspectable (FDR, coverage/no-call, and WT calling all reason per cluster). Revisit only if library scale (≳500k barcodes) forces it — and it needs (a) FP/recall-equivalence validation on hard data and (b) batching into sample-groups to bound the multi-sample matrix.
 - [ ] Perform [parameter optimization](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#parameter-space-exploration)
   - [ ] cutadapt stringency
+    - [ ] Add a **minimum** barcode-length filter — `filter_awk` bounds only the max (`max_barcode_length`); short mis-extractions (e.g. 5–12 bp, which collide trivially) currently pass through.
   - [ ] starcode clustering parameters
-    - [ ] Revisit `barcode_distance` — the FDR estimator flags ~191 expected spurious merges for a 10k random-barcode library at `-d 5`
+    - [x] Revisit `barcode_distance` — analyzed on a real run: `-d 5` sits just below the collision-**percolation** cliff (at `-d ≥6` the 20-mer graph percolates and collapses distinct barcodes), so it is appropriate; only ~3 merges were actually flagged (starcode's abundance-ratio gating protects equal-abundance barcodes), and the low-depth tail is real low-abundance molecules, not unmerged error satellites. The real lever is barcode **design** (longer / error-correcting sets), not the clustering distance.
   - [ ] minimap2 mapping parameters
   - [x] bcftools variant calling parameters
     - [x] Minimum barcode group size to call variants? — `min_cluster_size`; choose it with [`tools/fdr_estimator.py`](tools/fdr_estimator.py)
     - [x] Q-score weighting? — `use_qual` (consensus) / `single_qc` allele-fraction calling
+    - [x] Annotate each call with its **cluster read depth** (`cluster_depth` column on `results/{sample}.variants.tsv`) so a run can be filtered to a target FDR post-hoc — per-barcode calls below ~10 reads are noise-dominated regardless of calling mode.
     - [ ] Affirmatively **call WT as WT** (depth-gated reference calls); never *impute* missing data as WT. A barcode with no variant is only wild-type where it has sufficient coverage — uncovered/low-depth positions are explicit no-calls, not reference. Requires moving past `bcftools call -v` (variants-only) to a per-barcode callability/coverage track so "confirmed reference" is distinguishable from "no data".
 
 ## Variant-calling modes
@@ -199,4 +201,4 @@ Contributions and feedback are welcome. Please submit an issue or pull request.
 ## Getting help
 
 For any issues, please open an issue on the GitHub repository. For
-questions or feedback, [email Chris](https://www.wcoyotelab.com/members/).
+questions or feedback, [email Chris](https://www.waymentsteelelab.org).
