@@ -30,7 +30,7 @@ INSERT_ERROR_RATE = 0.015  # per-base substitution rate in the insert
 HIGH_Q = 30  # Phred for confident bases
 LOW_Q = 10  # Phred for error/low-confidence bases
 
-# SNP positions (1-based, within the gp17 ORF 199-3237), spread along the ORF.
+# SNP positions (1-based, within the gp17 ORF 198-3237), spread along the ORF.
 SNP_POSITIONS = [250, 500, 800, 1100, 1700, 2300]
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

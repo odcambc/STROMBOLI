@@ -24,6 +24,7 @@ def _load(module_name, filename):
 wcv = _load("write_consensus_variants", "write_consensus_variants.py")
 mb = _load("match_barcodes", "match_barcodes.py")
 wqs = _load("write_qc_summary", "write_qc_summary.py")
+cg = _load("create_genbank", "create_genbank.py")
 gen = importlib.util.spec_from_file_location(
     "gen", os.path.join(REPO_ROOT, "tests", "generate_synthetic_data.py")
 )
@@ -110,6 +111,8 @@ def test_classify_and_join_flags_and_excludes(tmp_path):
 
     # Only the clean barcode survives; merged and mixed are excluded.
     assert [r["barcode"] for r in main_rows] == [A]
+    # Each surviving call is annotated with its cluster read depth (n_reads).
+    assert main_rows[0]["cluster_depth"] == "10"
     assert flagged_rows[B]["reason"] == "merged"
     assert flagged_rows[C]["reason"] == "mixed"
     assert kept == 1 and flagged == 2
@@ -223,3 +226,45 @@ def test_other_base_differs():
     rng = random.Random(1)
     for base in "ACGT":
         assert generate.other_base(rng, base) != base
+
+
+# --- create_genbank reading frame -----------------------------------------------
+
+
+def test_create_genbank_frame():
+    """Regression: the 1-based `orf` start must be converted to 0-based for the
+    FeatureLocation. Skipping the -1 shifts the CDS one base, so bcftools csq
+    translates the ORF out of frame and every consequence call is wrong.
+
+    Crafted so the correct (1-based) frame is a clean ORF (M-start, no internal
+    stop), while the +1-shifted frame hits a leading stop."""
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+
+    # 1-based: C(1)C(2)C(3) | ATG(4-6) AAA AAA AAA TAA(stop, 16-18)
+    seq = "CCC" + "ATG" + "AAA" * 3 + "TAA"
+    record = SeqRecord(Seq(seq), id="ref", annotations={"molecule_type": "DNA"})
+    cg.build_record(record, "4-18", "testgene", "ref")
+
+    cds = [f for f in record.features if f.type == "CDS"][0]
+    # 1-based start 4 -> 0-based half-open start 3 (the fix); 4 would be the bug.
+    assert int(cds.location.start) == 3
+    assert int(cds.location.end) == 18
+
+    prot = str(record.seq[int(cds.location.start) : int(cds.location.end)].translate())
+    assert prot.startswith("M")  # correct frame opens with the start codon
+    assert prot[:-1].count("*") == 0  # ...and has no internal stops
+
+
+def test_create_genbank_rejects_out_of_frame_orf():
+    """Hardening: build_record fails loudly on an out-of-frame orf (e.g. an off-by-one
+    start) instead of silently emitting wrong consequences. Same crafted sequence; the
+    +1-shifted start "5-18" begins on a TGA stop and carries no ATG."""
+    import pytest
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+
+    seq = "CCC" + "ATG" + "AAA" * 3 + "TAA"  # in frame at 4-18, out of frame at 5-18
+    record = SeqRecord(Seq(seq), id="ref", annotations={"molecule_type": "DNA"})
+    with pytest.raises(ValueError, match="out of frame"):
+        cg.build_record(record, "5-18", "testgene", "ref")
