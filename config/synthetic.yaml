@@ -12,7 +12,9 @@ experiment_file: 'config/synthetic.csv'
 reference: amplicon_ref.fasta
 
 flanking_sequence: "GCAGTCTGGTGTATGCCTAC...GGTACATTTGAACGCCAAGG"
-orf: "199-3237"
+# 1-based inclusive; the gp17 CDS starts with the ATG at position 198 (was erroneously
+# 199 — an off-the-frame start that create_genbank now rejects via validate_orf_frame).
+orf: "198-3237"
 gene_name: gp17
 
 barcode_distance: 5

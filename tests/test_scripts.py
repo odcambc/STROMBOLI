@@ -254,3 +254,17 @@ def test_create_genbank_frame():
     prot = str(record.seq[int(cds.location.start) : int(cds.location.end)].translate())
     assert prot.startswith("M")  # correct frame opens with the start codon
     assert prot[:-1].count("*") == 0  # ...and has no internal stops
+
+
+def test_create_genbank_rejects_out_of_frame_orf():
+    """Hardening: build_record fails loudly on an out-of-frame orf (e.g. an off-by-one
+    start) instead of silently emitting wrong consequences. Same crafted sequence; the
+    +1-shifted start "5-18" begins on a TGA stop and carries no ATG."""
+    import pytest
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+
+    seq = "CCC" + "ATG" + "AAA" * 3 + "TAA"  # in frame at 4-18, out of frame at 5-18
+    record = SeqRecord(Seq(seq), id="ref", annotations={"molecule_type": "DNA"})
+    with pytest.raises(ValueError, match="out of frame"):
+        cg.build_record(record, "5-18", "testgene", "ref")
