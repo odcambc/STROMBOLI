@@ -10,6 +10,9 @@ import re
 import statistics
 from collections import Counter
 
+# v5: per-call read support — exact {cluster_depth: n_calls} counts (call_depth_counts) from
+# the cluster_depth column match_barcodes now writes on variants.tsv, plus a median_call_depth
+# scalar. Calls below ~10 reads are noise-dominated, so this is the FDR-relevant view of a run.
 # v4: barcode/variant coverage analytics, all from existing tables — ORF positional
 # coverage + evenness (Gini) from amino_acid_change codon positions (needs the orf length,
 # passed as a param), variant complexity (SNV/MNV/insertion/deletion) from INDEL + the '+'
@@ -17,7 +20,7 @@ from collections import Counter
 # (length, GC) from the cluster_qc barcode column.
 # v3: variant-consequence classes, variants-per-barcode spread, cluster purity, scalars.
 # v2: exact per-size cluster counts; the plugin chooses bins across the whole cohort.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 AF_BINS = ["0.2-0.4", "0.4-0.6", "0.6-0.85", "0.85-1.0"]
 # second_member_fraction is a purity measure in [0,1]: 0 means a clean single-member
@@ -247,6 +250,7 @@ def build_qc_summary(
     # (dna_change, falling back to POS:REF>ALT) and count how many barcodes carry each.
     variant_barcodes = Counter()
     n_variants = 0
+    call_depths = Counter()
     with open(variants, encoding="UTF-8") as f:
         for row in csv.DictReader(f, delimiter="\t"):
             n_variants += 1
@@ -254,9 +258,23 @@ def build_qc_summary(
                 row.get("POS", ""), row.get("REF", ""), row.get("ALT", "")
             )
             variant_barcodes[vid] += 1
+            depth = row.get("cluster_depth")
+            if depth not in ("", None):
+                try:
+                    call_depths[int(depth)] += 1
+                except (TypeError, ValueError):
+                    pass
     barcodes_per_variant_counts = {
         str(k): n for k, n in sorted(Counter(variant_barcodes.values()).items())
     }
+    # Per-call read support (axis: FDR). Exact {cluster_depth: n_calls}, binned by the plugin
+    # across the cohort like cluster sizes; calls below ~10 reads are noise-dominated. The
+    # median is the general-stats headline. elements() expands the counter back to one entry
+    # per call for the median; empty -> 0 (a sample with no depth-annotated calls).
+    call_depth_counts = {str(k): n for k, n in sorted(call_depths.items())}
+    median_call_depth = (
+        int(statistics.median(list(call_depths.elements()))) if call_depths else 0
+    )
 
     n_merged = n_mixed = 0
     n_flagged_confident = n_flagged_ambiguous = 0
@@ -278,6 +296,7 @@ def build_qc_summary(
         "median_cluster_size": int(statistics.median(passing)) if passing else 0,
         "n_variants": n_variants,
         "n_distinct_variants": len(variant_barcodes),
+        "median_call_depth": median_call_depth,
         "n_positions_mutated": len(positions),
         "n_codons_covered": n_codons_covered,
         "orf_codons": orf_codons,
@@ -291,6 +310,7 @@ def build_qc_summary(
         "n_flagged_confident": n_flagged_confident,
         "n_flagged_ambiguous": n_flagged_ambiguous,
         "cluster_size_counts": cluster_size_counts,
+        "call_depth_counts": call_depth_counts,
         "allele_fraction_histogram": af_hist,
         "variant_consequences": dict(consequences),
         "variant_types": dict(variant_types),

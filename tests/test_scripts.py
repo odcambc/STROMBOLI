@@ -165,12 +165,16 @@ def test_build_qc_summary(tmp_path):
         ],
     )
     variants = tmp_path / "v.tsv"
-    _write_tsv(variants, ["all_barcodes", "barcode", "POS", "REF", "ALT", "dna_change"], [
-        {"all_barcodes": "B", "barcode": "B", "POS": "100", "REF": "C", "ALT": "A",
-         "dna_change": "100C>A"},
-        {"all_barcodes": "C", "barcode": "C", "POS": "100", "REF": "C", "ALT": "A",
-         "dna_change": "100C>A"},  # same variant carried by a 2nd barcode
-    ])
+    _write_tsv(
+        variants,
+        ["all_barcodes", "cluster_depth", "barcode", "POS", "REF", "ALT", "dna_change"],
+        [
+            {"all_barcodes": "B", "cluster_depth": "4", "barcode": "B", "POS": "100",
+             "REF": "C", "ALT": "A", "dna_change": "100C>A"},
+            {"all_barcodes": "C", "cluster_depth": "12", "barcode": "C", "POS": "100",
+             "REF": "C", "ALT": "A", "dna_change": "100C>A"},  # same variant, 2nd barcode
+        ],
+    )
     flagged = tmp_path / "f.tsv"
     _write_tsv(
         flagged,
@@ -181,7 +185,7 @@ def test_build_qc_summary(tmp_path):
 
     s = wqs.build_qc_summary("samp", str(cutadapt), str(cluster_qc), str(cvars),
                              str(variants), str(flagged), min_cluster_size=2, orf="1-300")
-    assert s["schema_version"] == 4 and s["sample"] == "samp"
+    assert s["schema_version"] == 5 and s["sample"] == "samp"
     assert s["reads_total"] == 1000 and s["reads_with_barcode"] == 800
     assert s["n_clusters"] == 3 and s["n_clusters_passing"] == 2  # sizes 4,12 >= 2
     assert s["n_flagged_mixed"] == 1 and s["n_flagged_merged"] == 0
@@ -208,6 +212,9 @@ def test_build_qc_summary(tmp_path):
     assert s["barcodes_per_variant_counts"] == {"2": 1}
     # barcode composition over cluster_qc barcodes "A", "B", "C" (length 1 each)
     assert s["barcode_length_counts"] == {"1": 3}
+    # v5 per-call read support: depths 4 and 12 from the cluster_depth column; median = 8
+    assert s["call_depth_counts"] == {"4": 1, "12": 1}
+    assert s["median_call_depth"] == 8
 
 
 # --- synthetic data generator ---------------------------------------------------
