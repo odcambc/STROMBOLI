@@ -26,7 +26,4 @@ dependencies:
     - cyvcf2>=0.30
     - biopython>=1.83
     - biocode>=0.11
-    # multiqc-stromboli: pipeline-specific MultiQC plugin. Installed editable from the
-    # local dev repo for now; switch to the pinned pypi release once published:
-    #   - multiqc-stromboli>=0.1
-    - --editable /Users/bartleby/Projects/stromboli-multiqc
+    - multiqc-stromboli
